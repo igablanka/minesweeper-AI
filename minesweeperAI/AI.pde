@@ -1,43 +1,48 @@
 class AI {
 
-  PVector pos = new PVector(0, 0);
+  PVector pos = new PVector(0, 0); //ustawienie współżędnych od lewego górnego rogu
   int targetX;
   int targetY;
-  ArrayList<PVector> targets = new ArrayList<PVector>();
+  ArrayList<PVector> targets = new ArrayList<PVector>(); //tablica wektorów 
   int maxSpeed = 3000;
-  boolean flagTarget = false;
+  boolean flagTarget = false; 
   BigInteger totalArrangements = BigInteger.ZERO;
 
   //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  //konstruktor
   AI() {
-    //guess in the corners
+    //zgaduj rogi rozpoczęcie od rogu planszy
     earlyGuess(true);
   }
   //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   void pickNextTarget() {
     maxSpeed = 30000;
-    //if any tiles have the same amount of unflagged bombs as they have hidden spaces near them then they are all bombs
+    //jeżeli jakikolwiek kwadrat ma tą samą ilość nieoflagowanych bomb jak ilość ukrytych miejsc obok niego one wszystkie będą bombami
+    //sprawdza całą planszę po kolei (x i y) jeżeli kwadrat jest juz wcześniej  a jakis kwadrat jest ukryty blisko to jest bąbą więc oflaguj wszystkie ukryte blisko
     for (int i = 0; i< tilesX; i++) {
       for (int j = 0; j< tilesY; j++) {
         if (!tiles[i][j].hidden) {
           if (tiles[i][j].hiddenNear == tiles[i][j].bombsNear) {// - tiles[i][j].flaggedNear) {
-            addAllHiddenNear(i, j, 1);
+            addAllHiddenNear(i, j, 1); //1 oznacza że jest bąbą
           }
         }
       }
     }
-    //if any tiles have the same number of flagged tiles as there are bombs near it then all hidden spaces are safe
+    //jeżeli jakiś kwadrat ma tą samą ilość oflagowanych kwadratów co ilość bomb obok niego to wtedy wszytskie ukryte miejsca są bezpieczne
+    //dla kazdego x i y jezeli jest odkryty i jezeli bombs neer (kwadrat z numerkiem) jest równe ilości oflagowanych dookoła to ten kwadrat jest bezpieczny
+    //w pżeciwnym razie jeżeli jest mniejsze od ilości oflagowanych bąb wyświetl error
     for (int i = 0; i< tilesX; i++) {
       for (int j = 0; j< tilesY; j++) {
         if (!tiles[i][j].hidden) {
           if (tiles[i][j].bombsNear == tiles[i][j].flaggedNear) {
-            addAllHiddenNear(i, j, 0);
+            addAllHiddenNear(i, j, 0); // 0 nie ma BąBy
           } else if (tiles[i][j].bombsNear <= tiles[i][j].flaggedNear) {
             println("fuckkckckc");//error message
           }
         }
       }
     }
+   
     if (targets.size() ==0) {//if no targets found
       checkLinked();
       if (targets.size() ==0) {//if no targets found
@@ -46,31 +51,34 @@ class AI {
     }
   }
   //---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  //checks all tiles for any linkages which can lead a conclusion
+  //sprawdza wszystkie kwadraty w poszukiwaniu połączeń które mogą dać jakąś konkluzje
+  
   void checkLinked() {
     for (int i = 0; i< tilesX; i++) {//for each tile
       for (int j = 0; j< tilesY; j++) {
         if (!tiles[i][j].hidden) {
+          // jeżeli numerek jest większy niż ilość oflagowanych w koło i ukrytych to znaczy że bąba jest w ukrytych
           if (tiles[i][j].bombsNear != 1 &&  tiles[i][j].bombsNear != 0 && tiles[i][j].bombsNear - tiles[i][j].flaggedNear > 1 ) {
-            for (int k = 0; k < tiles[i][j].hiddensNear.size(); k++) {//for each hiddes tile near the tile being checked
+            for (int k = 0; k < tiles[i][j].hiddensNear.size(); k++) {//dla każdego ukrytego kwadrata blisko kwadrata sprawdzonego
 
-              if (tiles[i][j].hiddensNear.get(k).linked) {//if that tile is linked
+              
+              if (tiles[i][j].hiddensNear.get(k).linked) {//jeżeli kwadrat jest połączony
                 int numberLinked = 0;
                 ArrayList<Tile> linkedTilesAdjacentToThis = new ArrayList<Tile>(); 
-                for (int l = 0; l < tiles[i][j].hiddensNear.get(k).linkedWith.size(); l++) {//for every tile the linked tile is linked with
-                  //count the number of tiles the k tile is linked with which are also adjacent to this tile
+                for (int l = 0; l < tiles[i][j].hiddensNear.get(k).linkedWith.size(); l++) {//dla każdego połączonego kwadrata który jest połączony z
+                  //policz ilość kwadratów które są połączone z K kwadratem i są jego sąsiadami
                   if (tiles[i][j].hiddensNear.contains(tiles[i][j].hiddensNear.get(k).linkedWith.get(l))) {
-                    numberLinked ++;//note this will also count itself
+                    numberLinked ++;//uwaga to również policzy samego siebie
                     linkedTilesAdjacentToThis.add(tiles[i][j].hiddensNear.get(k).linkedWith.get(l));
                   }
                 }
                 if (numberLinked >1) {
-                  //ok so now we know that there are atleast 2 linked tiles adjacent to this tile
-                  //this means that we can reduce the number of spaces left to put bombs by numberLinked -1
-                  if (tiles[i][j].hiddenNear - (numberLinked -1) == tiles[i][j].bombsNear) {//this means that all tiles which aren't linked are bombs
-                    for (int m = 0; m < tiles[i][j].hiddensNear.size(); m++) {//for each adjacent tile
-                      if (!linkedTilesAdjacentToThis.contains(tiles[i][j].hiddensNear.get(m))) {//if its not in the linked group
-                        targets.add(new PVector (tiles[i][j].hiddensNear.get(m).pos.x/tileSize, tiles[i][j].hiddensNear.get(m).pos.y/tileSize, 1));//thats a bomb
+                  //więc teraz wiemy że są conajmniej 2 kwadraty sąsiadujące i połączone do tego kwadrata 
+                  //co oznacza że możemy teraz zredukować ilość miejsc pozostałych na postawienie bąb o ilość połączonych -1
+                  if (tiles[i][j].hiddenNear - (numberLinked -1) == tiles[i][j].bombsNear) {//to oznacza że wszystkie kwadraty które nie sa połączone są bąbami
+                    for (int m = 0; m < tiles[i][j].hiddensNear.size(); m++) {//dla każdego sąsiadującego kwadratu
+                      if (!linkedTilesAdjacentToThis.contains(tiles[i][j].hiddensNear.get(m))) {//jeżeli on nie jest w połączonej grupie
+                        targets.add(new PVector (tiles[i][j].hiddensNear.get(m).pos.x/tileSize, tiles[i][j].hiddensNear.get(m).pos.y/tileSize, 1));//tu jest bąba
                         tiles[i][j].hiddensNear.get(m).targeted = true;
 
                       }
@@ -255,7 +263,7 @@ class AI {
         if (tiles[i][j].hidden) {
           boolean unknownTile = true;
           tiles[i][j].unknown = false;
-          if ( i > 0 && !tiles[i-1][j].hidden) unknownTile = false;
+          if (i > 0 && !tiles[i-1][j].hidden) unknownTile = false;
           if (i < tilesX-1 && !tiles[i+1][j].hidden) unknownTile = false;
           if (i > 0 && j > 0 &&  !tiles[i-1][j-1].hidden) unknownTile = false;
           if (i < tilesX-1 && j > 0 &&  !tiles[i+1][j-1].hidden) unknownTile = false;
@@ -358,7 +366,7 @@ class AI {
     totalArrangements = BigInteger.ZERO;
 
     for (int i = 0; i < allBombArrangements.size(); i++) {
-       //since the remaining bombs can be arranged in any way amoungst the unknown tiles then the number of arrangements for this element of allBombArrangements is nCr where n is the number
+      //since the remaining bombs can be arranged in any way amoungst the unknown tiles then the number of arrangements for this element of allBombArrangements is nCr where n is the number
       // of unknown spaces left and r is the number of bombs left
       //this is where the numbers get stupid big and why I used big ints instead of long
       

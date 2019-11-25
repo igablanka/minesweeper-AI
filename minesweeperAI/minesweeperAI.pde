@@ -4,17 +4,17 @@ import java.util.LinkedList;
 import java.math.BigInteger;
 
 //number of tiles
-int tilesX = 30;
-int tilesY = 16;
+int tilesX = 10;
+int tilesY = 5;
 
 //size of each tile
-int tileSize = 30;
+int tileSize = 50;
 
 
 Tile[][] tiles = new Tile[tilesX][tilesY];
 
 //self explanatory
-int numberOfBombs = 99;
+int numberOfBombs = 10;
 boolean gameOver = false;
 AI ai;
 //images used
